@@ -1,0 +1,9 @@
+{
+	"name": "adfMaciejReplin",
+	"location": "northeurope",
+	"identity": {
+		"type": "SystemAssigned",
+		"principalId": "e6a239b1-a7d2-4998-87c8-fc8c91cdee0e",
+		"tenantId": "2ee548e1-6be8-4729-b86e-f482e29d2c9f"
+	}
+}
