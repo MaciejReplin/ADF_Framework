@@ -1,0 +1,6 @@
+{
+	"name": "adf-shir-dp-ingestion-weu",
+	"properties": {
+		"type": "SelfHosted"
+	}
+}

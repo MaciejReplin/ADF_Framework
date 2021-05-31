@@ -1,0 +1,10 @@
+{
+	"name": "adf-pe-sqlmetadata",
+	"properties": {
+		"privateLinkResourceId": "/subscriptions/52e7535e-dee2-4fb2-aa84-02da390e998f/resourceGroups/rg-dataplatform-uat-weu-02/providers/Microsoft.Sql/servers/sql-dataplatform-uat-weu",
+		"groupId": "sqlServer",
+		"fqdns": [
+			"sql-dataplatform-uat-weu.database.windows.net"
+		]
+	}
+}

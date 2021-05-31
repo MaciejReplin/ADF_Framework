@@ -1,0 +1,27 @@
+{
+    "name": "ds_framework_meta_skid_lkp",
+    "properties": {
+        "description": "Open AzureSQL Server dataset instance for for IDM skid object table",
+        "linkedServiceName": {
+            "referenceName": "LS_SQLServer_IDM",
+            "type": "LinkedServiceReference"
+        },
+        "folder": {
+            "name": "Datasets/SQLServer/META/"
+        },
+        "annotations": [],
+        "type": "AzureSqlTable",
+        "schema": [],
+        "typeProperties": {
+            "schema": {
+                "value": "tech",
+                "type": "Expression"
+            },
+            "table": {
+                "value": "object_skid_lkp",
+                "type": "Expression"
+            }
+        }
+    },
+    "type": "Microsoft.DataFactory/factories/datasets"
+}

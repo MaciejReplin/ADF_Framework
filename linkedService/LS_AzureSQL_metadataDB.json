@@ -1,0 +1,23 @@
+{
+	"name": "LS_AzureSQL_metadataDB",
+	"type": "Microsoft.DataFactory/factories/linkedservices",
+	"properties": {
+		"description": "<DESCRIPTION>",
+		"annotations": [],
+		"type": "AzureSqlDatabase",
+		"typeProperties": {
+			"connectionString": {
+				"type": "AzureKeyVaultSecret",
+				"store": {
+					"referenceName": "BeeSafeKeyVault",
+					"type": "LinkedServiceReference"
+				},
+				"secretName": "sqldb-dataplatform-metadata"
+			}
+		},
+		"connectVia": {
+			"referenceName": "integrationRuntimeManagedVN",
+			"type": "IntegrationRuntimeReference"
+		}
+	}
+}

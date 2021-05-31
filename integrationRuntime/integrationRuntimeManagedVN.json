@@ -1,0 +1,21 @@
+{
+    "name": "integrationRuntimeManagedVN",
+    "properties": {
+        "type": "Managed",
+        "typeProperties": {
+            "computeProperties": {
+                "location": "West Europe",
+                "dataFlowProperties": {
+                    "computeType": "General",
+                    "coreCount": 8,
+                    "timeToLive": 15,
+                    "cleanup": false
+                }
+            }
+        },
+        "managedVirtualNetwork": {
+            "type": "ManagedVirtualNetworkReference",
+            "referenceName": "default"
+        }
+    }
+}

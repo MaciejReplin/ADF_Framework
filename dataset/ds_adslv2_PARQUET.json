@@ -1,0 +1,46 @@
+{
+	"name": "ds_adslv2_PARQUET",
+	"properties": {
+		"description": "Data set for Azure Data Lake Storage Gen 2 with container, folder and file name parameters. PARQUET file",
+		"linkedServiceName": {
+			"referenceName": "LS_AzureDataLakeStoragev2",
+			"type": "LinkedServiceReference"
+		},
+		"parameters": {
+			"ds_container_name": {
+				"type": "string"
+			},
+			"ds_folder_name": {
+				"type": "string"
+			},
+			"ds_file_name": {
+				"type": "string"
+			}
+		},
+		"folder": {
+			"name": "Datasets/ADSLv2/"
+		},
+		"annotations": [],
+		"type": "Parquet",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobFSLocation",
+				"fileName": {
+					"value": "@dataset().ds_file_name",
+					"type": "Expression"
+				},
+				"folderPath": {
+					"value": "@dataset().ds_folder_name",
+					"type": "Expression"
+				},
+				"fileSystem": {
+					"value": "@dataset().ds_container_name",
+					"type": "Expression"
+				}
+			},
+			"compressionCodec": "none"
+		},
+		"schema": []
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

@@ -1,0 +1,30 @@
+{
+  "BeeSafeKeyVault": [
+    {
+      "name": "$.properties.typeProperties.baseUrl",
+      "value": "https://kv-dp-idm-uat-weu.vault.azure.net/",
+      "action": "update"
+    }
+  ],
+  "LS_AzureDataLakeStoragev2": [
+    {
+      "name": "$.properties.typeProperties.url",
+      "value": "https://dlsdpingestuatweu.dfs.core.windows.net/",
+      "action": "update"
+    }
+  ],
+  "adf-dp-idm-dev-weu": [
+    {
+      "name": "$.properties.globalParameters.adf_resource_group_name.value",
+      "value": "rg-dataplatform-idm-uat-weu"
+    },
+    {
+      "name": "$.properties.globalParameters.adf_environment.value",
+      "value": "UAT"
+    },
+    {
+      "name": "$.properties.globalParameters.adf_subscription_id.value",
+      "value": "52e7535e-dee2-4fb2-aa84-02da390e998f"
+    }
+  ]
+}

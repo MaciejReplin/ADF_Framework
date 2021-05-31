@@ -1,0 +1,17 @@
+{
+    "name": "ds_sqlserver_idm",
+    "properties": {
+        "description": "Open AzureSQL Server dataset instance for IDM DB(usage for Quering)",
+        "linkedServiceName": {
+            "referenceName": "LS_SQLServer_IDM",
+            "type": "LinkedServiceReference"
+        },
+        "folder": {
+            "name": "Datasets/SQLServer/IDM/"
+        },
+        "annotations": [],
+        "type": "AzureSqlTable",
+        "schema": []
+    },
+    "type": "Microsoft.DataFactory/factories/datasets"
+}

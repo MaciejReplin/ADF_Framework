@@ -1,0 +1,814 @@
+{
+	"name": "Deploy_Pipelines",
+	"properties": {
+		"description": "Pipeline responsible for deployment of Linked Services, Data sets, Pipelines and Data Flows.",
+		"activities": [
+			{
+				"name": "Get_Pipelines_for_deployment",
+				"description": "Activity responsible for getting list of pipelines that are in a need for deployment.",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": "SELECT pipeline_skid\n\t,pipeline_name\n\t,pipeline_desc\n\t,pipeline_param_json\nFROM [meta].[pipeline_instance_cfg]\nWHERE update_date > ISNULL(pipeline_last_deploy_date, '1900-01-01')\nORDER BY pipeline_skid\n",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "ds_metadata_db",
+						"type": "DatasetReference"
+					},
+					"firstRowOnly": false
+				}
+			},
+			{
+				"name": "Deploy_Pipelines",
+				"description": "Activity responsible for looping through pipelines to be deployed.",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "Get_Pipelines_for_deployment_Log_Success",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('Get_Pipelines_for_deployment').output.value",
+						"type": "Expression"
+					},
+					"activities": [
+						{
+							"name": "Create_Or_Update_Pipeline",
+							"description": "Activity responsible for calling ADF REST API to deploy pipeline",
+							"type": "WebActivity",
+							"dependsOn": [
+								{
+									"activity": "Get_Pipeline_template_Log_Success",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"url": {
+									"value": "https://management.azure.com/subscriptions/@{pipeline().globalParameters.adf_subscription_id}/resourceGroups/@{pipeline().globalParameters.adf_resource_group_name}/providers/Microsoft.DataFactory/factories/@{pipeline().DataFactory}/pipelines/@{item().pipeline_name}?api-version=@{pipeline().globalParameters.adf_rest_api_version}",
+									"type": "Expression"
+								},
+								"method": "PUT",
+								"body": {
+									"value": "@{activity('Get_Pipeline_template').output.firstRow.template_filled}",
+									"type": "Expression"
+								},
+								"authentication": {
+									"type": "MSI",
+									"resource": "https://management.azure.com/"
+								}
+							}
+						},
+						{
+							"name": "Get_Pipeline_template",
+							"description": "Activity responsible for getting pipeline JSON template.",
+							"type": "Lookup",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "AzureSqlSource",
+									"sqlReaderStoredProcedureName": "[meta].[p_get_object_json_code]",
+									"storedProcedureParameters": {
+										"in_object_skid": {
+											"type": "Int32",
+											"value": {
+												"value": "@item().pipeline_skid",
+												"type": "Expression"
+											}
+										},
+										"in_object_type_code": {
+											"type": "String",
+											"value": "PP"
+										}
+									},
+									"queryTimeout": "02:00:00",
+									"partitionOption": "None"
+								},
+								"dataset": {
+									"referenceName": "ds_metadata_db",
+									"type": "DatasetReference"
+								}
+							}
+						},
+						{
+							"name": "Update_last_deploy_date",
+							"description": "Activity responsible for executing store procedure in order to update last delpoy date.",
+							"type": "SqlServerStoredProcedure",
+							"dependsOn": [
+								{
+									"activity": "Create_Or_Update_Pipeline_Log_Success",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": "[meta].[p_update_object_deployment_date]",
+								"storedProcedureParameters": {
+									"in_object_skid": {
+										"value": {
+											"value": "@item().pipeline_skid",
+											"type": "Expression"
+										},
+										"type": "Int32"
+									},
+									"in_object_type_code": {
+										"value": "PP",
+										"type": "String"
+									}
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "LS_AzureSQL_metadataDB",
+								"type": "LinkedServiceReference"
+							}
+						},
+						{
+							"name": "Get_Pipeline_template_Log_Success",
+							"type": "SqlServerStoredProcedure",
+							"dependsOn": [
+								{
+									"activity": "Get_Pipeline_template",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": "[meta].[p_fill_process_log]",
+								"storedProcedureParameters": {
+									"in_activity_type": {
+										"value": "Lookup",
+										"type": "String"
+									},
+									"in_message": {
+										"value": {
+											"value": "@concat('Get_Pipeline_template: ', activity('Get_Pipeline_template').output.firstRow)",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"in_pipeline_name": {
+										"value": {
+											"value": "@pipeline().Pipeline",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"in_pipeline_parameters": {
+										"value": "None",
+										"type": "String"
+									},
+									"in_pipeline_run_id": {
+										"value": {
+											"value": "@pipeline().RunId",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"in_status_code": {
+										"value": {
+											"value": "INFO",
+											"type": "Expression"
+										},
+										"type": "String"
+									}
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "LS_AzureSQL_metadataDB",
+								"type": "LinkedServiceReference"
+							}
+						},
+						{
+							"name": "Get_Pipeline_template_Log_Fail",
+							"type": "SqlServerStoredProcedure",
+							"dependsOn": [
+								{
+									"activity": "Get_Pipeline_template",
+									"dependencyConditions": [
+										"Failed"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": "[meta].[p_fill_process_log]",
+								"storedProcedureParameters": {
+									"in_activity_type": {
+										"value": "Lookup",
+										"type": "String"
+									},
+									"in_message": {
+										"value": {
+											"value": "@concat('Error in activity Get_Pipeline_template: ', activity('Get_Pipeline_template').Error.Message)",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"in_pipeline_name": {
+										"value": {
+											"value": "@pipeline().Pipeline",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"in_pipeline_parameters": {
+										"value": "None",
+										"type": "String"
+									},
+									"in_pipeline_run_id": {
+										"value": {
+											"value": "@pipeline().RunId",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"in_status_code": {
+										"value": "FINISHED WITH ERRORS",
+										"type": "String"
+									}
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "LS_AzureSQL_metadataDB",
+								"type": "LinkedServiceReference"
+							}
+						},
+						{
+							"name": "Create_Or_Update_Pipeline_Log_Success",
+							"type": "SqlServerStoredProcedure",
+							"dependsOn": [
+								{
+									"activity": "Create_Or_Update_Pipeline",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": "[meta].[p_fill_process_log]",
+								"storedProcedureParameters": {
+									"in_activity_type": {
+										"value": "Web",
+										"type": "String"
+									},
+									"in_message": {
+										"value": {
+											"value": "@concat('Create_Or_Update_Pipeline: ', activity('Create_Or_Update_Pipeline').output)",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"in_pipeline_name": {
+										"value": {
+											"value": "@pipeline().Pipeline",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"in_pipeline_parameters": {
+										"value": "None",
+										"type": "String"
+									},
+									"in_pipeline_run_id": {
+										"value": {
+											"value": "@pipeline().RunId",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"in_status_code": {
+										"value": {
+											"value": "INFO",
+											"type": "Expression"
+										},
+										"type": "String"
+									}
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "LS_AzureSQL_metadataDB",
+								"type": "LinkedServiceReference"
+							}
+						},
+						{
+							"name": "Create_Or_Update_Pipeline_Log_Fail",
+							"type": "SqlServerStoredProcedure",
+							"dependsOn": [
+								{
+									"activity": "Create_Or_Update_Pipeline",
+									"dependencyConditions": [
+										"Failed"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": "[meta].[p_fill_process_log]",
+								"storedProcedureParameters": {
+									"in_activity_type": {
+										"value": "Web",
+										"type": "String"
+									},
+									"in_message": {
+										"value": {
+											"value": "@concat('Error in activity Create_Or_Update_Pipeline: ', activity('Create_Or_Update_Pipeline').Error.Message)",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"in_pipeline_name": {
+										"value": {
+											"value": "@pipeline().Pipeline",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"in_pipeline_parameters": {
+										"value": "None",
+										"type": "String"
+									},
+									"in_pipeline_run_id": {
+										"value": {
+											"value": "@pipeline().RunId",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"in_status_code": {
+										"value": "FINISHED WITH ERRORS",
+										"type": "String"
+									}
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "LS_AzureSQL_metadataDB",
+								"type": "LinkedServiceReference"
+							}
+						},
+						{
+							"name": "Update_last_deploy_date_Log_Success",
+							"type": "SqlServerStoredProcedure",
+							"dependsOn": [
+								{
+									"activity": "Update_last_deploy_date",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": "[meta].[p_fill_process_log]",
+								"storedProcedureParameters": {
+									"in_activity_type": {
+										"value": "Stored procedure",
+										"type": "String"
+									},
+									"in_message": {
+										"value": {
+											"value": "@concat('Update_last_deploy_date: ', activity('Update_last_deploy_date').output)",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"in_pipeline_name": {
+										"value": {
+											"value": "@pipeline().Pipeline",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"in_pipeline_parameters": {
+										"value": "None",
+										"type": "String"
+									},
+									"in_pipeline_run_id": {
+										"value": {
+											"value": "@pipeline().RunId",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"in_status_code": {
+										"value": {
+											"value": "INFO",
+											"type": "Expression"
+										},
+										"type": "String"
+									}
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "LS_AzureSQL_metadataDB",
+								"type": "LinkedServiceReference"
+							}
+						},
+						{
+							"name": "Update_last_deploy_date_Log_Fail",
+							"type": "SqlServerStoredProcedure",
+							"dependsOn": [
+								{
+									"activity": "Update_last_deploy_date",
+									"dependencyConditions": [
+										"Failed"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": "[meta].[p_fill_process_log]",
+								"storedProcedureParameters": {
+									"in_activity_type": {
+										"value": "Stored procedure",
+										"type": "String"
+									},
+									"in_message": {
+										"value": {
+											"value": "@concat('Error in activity Update_last_deploy_date: ', activity('Update_last_deploy_date').Error.Message)",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"in_pipeline_name": {
+										"value": {
+											"value": "@pipeline().Pipeline",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"in_pipeline_parameters": {
+										"value": "None",
+										"type": "String"
+									},
+									"in_pipeline_run_id": {
+										"value": {
+											"value": "@pipeline().RunId",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"in_status_code": {
+										"value": "FINISHED WITH ERRORS",
+										"type": "String"
+									}
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "LS_AzureSQL_metadataDB",
+								"type": "LinkedServiceReference"
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "Get_Pipelines_for_deployment_Log_Success",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "Get_Pipelines_for_deployment",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[meta].[p_fill_process_log]",
+					"storedProcedureParameters": {
+						"in_activity_type": {
+							"value": "Lookup",
+							"type": "String"
+						},
+						"in_message": {
+							"value": {
+								"value": "@concat('Get_Pipelines_for_deployment: ', activity('Get_Pipelines_for_deployment').output)",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"in_pipeline_name": {
+							"value": {
+								"value": "@pipeline().Pipeline",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"in_pipeline_parameters": {
+							"value": "None",
+							"type": "String"
+						},
+						"in_pipeline_run_id": {
+							"value": {
+								"value": "@pipeline().RunId",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"in_status_code": {
+							"value": {
+								"value": "INFO",
+								"type": "Expression"
+							},
+							"type": "String"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "LS_AzureSQL_metadataDB",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "Get_Pipelines_for_deployment_Log_Fail",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "Get_Pipelines_for_deployment",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[meta].[p_fill_process_log]",
+					"storedProcedureParameters": {
+						"in_activity_type": {
+							"value": "Lookup",
+							"type": "String"
+						},
+						"in_message": {
+							"value": {
+								"value": "@concat('Error in activity Get_Pipelines_for_deployment: ', activity('Get_Pipelines_for_deployment').Error.Message)",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"in_pipeline_name": {
+							"value": {
+								"value": "@pipeline().Pipeline",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"in_pipeline_parameters": {
+							"value": "None",
+							"type": "String"
+						},
+						"in_pipeline_run_id": {
+							"value": {
+								"value": "@pipeline().RunId",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"in_status_code": {
+							"value": "FINISHED WITH ERRORS",
+							"type": "String"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "LS_AzureSQL_metadataDB",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "Deploy_Pipelines_Log_Success",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "Deploy_Pipelines",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[meta].[p_fill_process_log]",
+					"storedProcedureParameters": {
+						"in_activity_type": {
+							"value": "ForEach",
+							"type": "String"
+						},
+						"in_message": {
+							"value": {
+								"value": "@concat('Deploy_Pipelines: finished successfully')",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"in_pipeline_name": {
+							"value": {
+								"value": "@pipeline().Pipeline",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"in_pipeline_parameters": {
+							"value": "None",
+							"type": "String"
+						},
+						"in_pipeline_run_id": {
+							"value": {
+								"value": "@pipeline().RunId",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"in_status_code": {
+							"value": {
+								"value": "FINISHED",
+								"type": "Expression"
+							},
+							"type": "String"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "LS_AzureSQL_metadataDB",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "Deploy_Pipelines_Log_Fail",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "Deploy_Pipelines",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[meta].[p_fill_process_log]",
+					"storedProcedureParameters": {
+						"in_activity_type": {
+							"value": "ForEach",
+							"type": "String"
+						},
+						"in_message": {
+							"value": {
+								"value": "@concat('Error in activity Deploy_Pipelines: ', activity('Deploy_Pipelines').Error.Message)",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"in_pipeline_name": {
+							"value": {
+								"value": "@pipeline().Pipeline",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"in_pipeline_parameters": {
+							"value": "None",
+							"type": "String"
+						},
+						"in_pipeline_run_id": {
+							"value": {
+								"value": "@pipeline().RunId",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"in_status_code": {
+							"value": "FINISHED WITH ERRORS",
+							"type": "String"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "LS_AzureSQL_metadataDB",
+					"type": "LinkedServiceReference"
+				}
+			}
+		],
+		"folder": {
+			"name": "Framework/Create_Objects/META"
+		},
+		"annotations": [],
+		"lastPublishTime": "2021-04-08T22:08:17Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

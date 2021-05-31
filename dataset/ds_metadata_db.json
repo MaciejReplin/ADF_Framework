@@ -1,0 +1,17 @@
+{
+	"name": "ds_metadata_db",
+	"properties": {
+		"description": "Open AzureSQL Server dataset instancefor Metadata DB",
+		"linkedServiceName": {
+			"referenceName": "LS_AzureSQL_metadataDB",
+			"type": "LinkedServiceReference"
+		},
+		"folder": {
+			"name": "Datasets/SQLServer/META/"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": []
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

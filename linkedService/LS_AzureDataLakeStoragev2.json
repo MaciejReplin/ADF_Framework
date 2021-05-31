@@ -1,0 +1,15 @@
+{
+	"name": "LS_AzureDataLakeStoragev2",
+	"properties": {
+		"annotations": [],
+		"type": "AzureBlobFS",
+		"typeProperties": {
+			"url": "https://dlsdpingestdevweu.dfs.core.windows.net"
+		},
+		"connectVia": {
+			"referenceName": "integrationRuntimeManagedVN",
+			"type": "IntegrationRuntimeReference"
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/linkedservices"
+}

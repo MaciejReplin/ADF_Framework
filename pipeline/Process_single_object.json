@@ -1,0 +1,337 @@
+{
+	"name": "Process_single_object",
+	"properties": {
+		"description": "Pipeline responsible for  procesisng single object\nInsert object name(s) in format \n'object_name1','object_name2',...",
+		"activities": [
+			{
+				"name": "Iterate_over_source_system",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "Get_Source_System_List",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('Get_Source_System_List').output.value",
+						"type": "Expression"
+					},
+					"isSequential": true,
+					"activities": [
+						{
+							"name": "Current_source_system",
+							"type": "SetVariable",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "v_current_source_system",
+								"value": {
+									"value": "@item().source_system_name",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "Filter_for_sequence",
+							"type": "Filter",
+							"dependsOn": [
+								{
+									"activity": "Current_source_system",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"items": {
+									"value": "@activity('Get_Standarization_Objects_to_refresh').output.value",
+									"type": "Expression"
+								},
+								"condition": {
+									"value": "@contains(item().source_system_name, variables('v_current_source_system'))",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "Run_in_sequence",
+							"type": "ExecutePipeline",
+							"dependsOn": [
+								{
+									"activity": "Run_parallel_objects",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"pipeline": {
+									"referenceName": "Run_In_Sequence",
+									"type": "PipelineReference"
+								},
+								"waitOnCompletion": true,
+								"parameters": {
+									"p_object_list": {
+										"value": "@activity('Filter_for_sequence').output.value",
+										"type": "Expression"
+									}
+								}
+							}
+						},
+						{
+							"name": "Filter_for_parallel",
+							"type": "Filter",
+							"dependsOn": [
+								{
+									"activity": "Current_source_system",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"items": {
+									"value": "@activity('Get_ingestion_objects_to_refresh').output.value",
+									"type": "Expression"
+								},
+								"condition": {
+									"value": "@contains(item().source_system_name, variables('v_current_source_system'))",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "Run_parallel_objects",
+							"type": "ExecutePipeline",
+							"dependsOn": [
+								{
+									"activity": "Filter_for_sequence",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								},
+								{
+									"activity": "Filter_for_parallel",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"pipeline": {
+									"referenceName": "Run_In_Parallel",
+									"type": "PipelineReference"
+								},
+								"waitOnCompletion": true,
+								"parameters": {
+									"p_object_list": {
+										"value": "@activity('Filter_for_parallel').output.value",
+										"type": "Expression"
+									}
+								}
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "Get_Ingestion_objects",
+				"type": "IfCondition",
+				"dependsOn": [],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@equals(pipeline().parameters.run_ingestion,1)",
+						"type": "Expression"
+					},
+					"ifTrueActivities": [
+						{
+							"name": "Get_ingestion_objects_to_refresh",
+							"description": "Activity responsible for getting source system pipelines to refresh.",
+							"type": "Lookup",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "AzureSqlSource",
+									"sqlReaderQuery": {
+										"value": "SELECT   pipeline_skid\n       , pipeline_runtime_parameter_skid\n\t   , pipeline_name\n\t   , pipeline_runtime_param_json\n\t   , source_system_name\n          ,order_seq\n          ,source_system_skid\n,object_skid\n,target_object_ind\n,dependent_object_list\n,critical_load_ind\n  FROM meta.source_system_to_refresh_vw\nWHERE target_object_ind = 'N'\nAND object_skid IN\n(SELECT object_skid\n        FROM meta.object_lkp\n        WHERE object_name IN (@{pipeline().parameters.objects_to_run_list}))\norder by source_system_skid asc, order_seq asc",
+										"type": "Expression"
+									},
+									"queryTimeout": "02:00:00",
+									"partitionOption": "None"
+								},
+								"dataset": {
+									"referenceName": "ds_metadata_db",
+									"type": "DatasetReference"
+								},
+								"firstRowOnly": false
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "Get_Source_System_List",
+				"description": "",
+				"type": "Lookup",
+				"dependsOn": [
+					{
+						"activity": "Get_Standarization_Objects",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": {
+							"value": "SELECT   distinct\n\t    source_system_name\n          ,source_system_skid\n  FROM meta.source_system_to_refresh_vw\nWHERE object_skid IN\n(SELECT object_skid\n        FROM meta.object_lkp\n        WHERE object_name IN (@{pipeline().parameters.objects_to_run_list}))\nORDER BY source_system_skid asc",
+							"type": "Expression"
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "ds_metadata_db",
+						"type": "DatasetReference"
+					},
+					"firstRowOnly": false
+				}
+			},
+			{
+				"name": "Get_Standarization_Objects",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "Get_Ingestion_objects",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@equals(pipeline().parameters.run_ingestion,1)",
+						"type": "Expression"
+					},
+					"ifTrueActivities": [
+						{
+							"name": "Get_Standarization_Objects_to_refresh",
+							"description": "Activity responsible for getting source system pipelines to refresh.",
+							"type": "Lookup",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "AzureSqlSource",
+									"sqlReaderQuery": {
+										"value": "SELECT   pipeline_skid\n       , pipeline_runtime_parameter_skid\n\t   , pipeline_name\n\t   , pipeline_runtime_param_json\n\t   , source_system_name\n          ,order_seq\n          ,source_system_skid\n,object_skid\n,target_object_ind\n,dependent_object_list\n,critical_load_ind\n  FROM meta.source_system_to_refresh_vw\nWHERE target_object_ind = 'Y'\nand object_skid IN\n(SELECT object_skid\n        FROM meta.object_lkp\n        WHERE object_name IN (@{pipeline().parameters.objects_to_run_list}))\norder by source_system_skid asc, order_seq asc",
+										"type": "Expression"
+									},
+									"queryTimeout": "02:00:00",
+									"partitionOption": "None"
+								},
+								"dataset": {
+									"referenceName": "ds_metadata_db",
+									"type": "DatasetReference"
+								},
+								"firstRowOnly": false
+							}
+						}
+					]
+				}
+			}
+		],
+		"parameters": {
+			"run_standratization": {
+				"type": "int",
+				"defaultValue": 1
+			},
+			"run_ingestion": {
+				"type": "int",
+				"defaultValue": 1
+			},
+			"objects_to_run_list": {
+				"type": "string",
+				"defaultValue": "'dictionary','address'"
+			}
+		},
+		"variables": {
+			"v_proc_source_system": {
+				"type": "Array"
+			},
+			"v_prev_proc_source_system": {
+				"type": "String"
+			},
+			"v_objects_to_refresh": {
+				"type": "Array"
+			},
+			"v_target_ind": {
+				"type": "String"
+			},
+			"v_pararell_objects": {
+				"type": "Array"
+			},
+			"v_sequence_objects": {
+				"type": "Array"
+			},
+			"v_framework_params": {
+				"type": "Array"
+			},
+			"v_objets_per_source_system": {
+				"type": "Array"
+			},
+			"v_current_source_system": {
+				"type": "String"
+			},
+			"v_refresh_object_skid_list": {
+				"type": "Array"
+			},
+			"v_test1": {
+				"type": "String"
+			},
+			"v_test2": {
+				"type": "String"
+			}
+		},
+		"folder": {
+			"name": "Framework/Schedule_Runs"
+		},
+		"annotations": [],
+		"lastPublishTime": "2021-04-23T11:14:43Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

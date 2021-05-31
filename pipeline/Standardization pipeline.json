@@ -1,0 +1,2457 @@
+{
+	"name": "Standardization pipeline",
+	"properties": {
+		"description": "Standardization pipeline",
+		"activities": [
+			{
+				"name": "Choose_Standardization_option",
+				"description": "Activity responsible for switching to standardization data flow according to metadata: truncate/not truncate, SCD enabled/disabled.",
+				"type": "Switch",
+				"dependsOn": [
+					{
+						"activity": "Copy_Source_Object_To_Staging",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"on": {
+						"value": "@variables('v_standardization_option')",
+						"type": "Expression"
+					},
+					"cases": [
+						{
+							"value": "T-N-SCD-Y-SKID-Y",
+							"activities": [
+								{
+									"name": "SKID_Assignment_and SCD_wo_truncate",
+									"description": "Data Flow responsible for standardization with SKID assignment and SCD without truncate target table option.",
+									"type": "ExecuteDataFlow",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"dataflow": {
+											"referenceName": "Standardization_Data_Flow_with_SKID_assignment_and_with_SCD",
+											"type": "DataFlowReference",
+											"parameters": {
+												"df_trgt_object_skid": {
+													"value": "@pipeline().parameters.p_auto_trgt_object_skid",
+													"type": "Expression"
+												},
+												"df_trgt_key_column_list": {
+													"value": "'@{pipeline().parameters.p_auto_trgt_key_column_list}'",
+													"type": "Expression"
+												},
+												"df_trgt_active_column_name": {
+													"value": "'@{pipeline().parameters.p_auto_trgt_active_column_name}'",
+													"type": "Expression"
+												},
+												"df_trgt_non_key_column_list": {
+													"value": "'@{pipeline().parameters.p_auto_trgt_non_key_column_list}'",
+													"type": "Expression"
+												},
+												"df_trgt_skid_column_name": {
+													"value": "'@{pipeline().parameters.p_auto_trgt_skid_column_name}'",
+													"type": "Expression"
+												},
+												"df_log_process_id": {
+													"value": "@pipeline().parameters.p_auto_log_process_id",
+													"type": "Expression"
+												},
+												"df_scd_begin_date_column_name": {
+													"value": "'@{pipeline().parameters.p_auto_trgt_valid_from_column_name}'",
+													"type": "Expression"
+												},
+												"df_scd_end_date_column_name": {
+													"value": "'@{pipeline().parameters.p_auto_trgt_valid_to_column_name}'",
+													"type": "Expression"
+												},
+												"df_std_sql_query": {
+													"value": "@pipeline().parameters.p_auto_std_sql_query",
+													"type": "Expression"
+												},
+												"df_log_process_date_column_name": {
+													"value": "'@{pipeline().parameters.p_auto_process_date_column_name}'",
+													"type": "Expression"
+												},
+												"df_log_process_id_column_name": {
+													"value": "'@{pipeline().parameters.p_auto_process_id_column_name}'",
+													"type": "Expression"
+												}
+											},
+											"datasetParameters": {
+												"TargetObject": {
+													"schema_name": {
+														"value": "@pipeline().parameters.p_auto_trgt_schema_name",
+														"type": "Expression"
+													},
+													"table_name": {
+														"value": "@pipeline().parameters.p_auto_trgt_table_name",
+														"type": "Expression"
+													}
+												},
+												"DimHist": {
+													"schema_name": {
+														"value": "@pipeline().parameters.p_auto_trgt_hist_schema_name",
+														"type": "Expression"
+													},
+													"table_name": {
+														"value": "@pipeline().parameters.p_auto_trgt_hist_table_name",
+														"type": "Expression"
+													}
+												},
+												"TargetObjectInsertSink": {
+													"schema_name": {
+														"value": "@pipeline().parameters.p_auto_trgt_schema_name",
+														"type": "Expression"
+													},
+													"table_name": {
+														"value": "@pipeline().parameters.p_auto_trgt_table_name",
+														"type": "Expression"
+													}
+												},
+												"HistTable": {
+													"schema_name": {
+														"value": "@pipeline().parameters.p_auto_trgt_hist_schema_name",
+														"type": "Expression"
+													},
+													"table_name": {
+														"value": "@pipeline().parameters.p_auto_trgt_hist_table_name",
+														"type": "Expression"
+													}
+												}
+											}
+										},
+										"integrationRuntime": {
+											"referenceName": "integrationRuntimeManagedVN",
+											"type": "IntegrationRuntimeReference"
+										},
+										"traceLevel": "Fine"
+									}
+								},
+								{
+									"name": "SKID_Assignment_and SCD_wo_truncate_Success",
+									"type": "SqlServerStoredProcedure",
+									"dependsOn": [
+										{
+											"activity": "SKID_Assignment_and SCD_wo_truncate",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"storedProcedureName": "[meta].[p_fill_process_log]",
+										"storedProcedureParameters": {
+											"in_activity_type": {
+												"value": {
+													"value": "Data Flow",
+													"type": "Expression"
+												},
+												"type": "String"
+											},
+											"in_message": {
+												"value": {
+													"value": "@concat('SKID_Assignment_and SCD_wo_truncate: ', activity('SKID_Assignment_and SCD_wo_truncate').output.runStatus)",
+													"type": "Expression"
+												},
+												"type": "String"
+											},
+											"in_pipeline_name": {
+												"value": {
+													"value": "@pipeline().Pipeline",
+													"type": "Expression"
+												},
+												"type": "String"
+											},
+											"in_pipeline_parameters": {
+												"value": "None",
+												"type": "String"
+											},
+											"in_pipeline_run_id": {
+												"value": {
+													"value": "@pipeline().RunId",
+													"type": "Expression"
+												},
+												"type": "String"
+											},
+											"in_status_code": {
+												"value": "INFO",
+												"type": "String"
+											}
+										}
+									},
+									"linkedServiceName": {
+										"referenceName": "LS_AzureSQL_metadataDB",
+										"type": "LinkedServiceReference"
+									}
+								},
+								{
+									"name": "SKID_Assignment_and SCD_wo_truncate_Log_fail",
+									"type": "SqlServerStoredProcedure",
+									"dependsOn": [
+										{
+											"activity": "SKID_Assignment_and SCD_wo_truncate",
+											"dependencyConditions": [
+												"Failed"
+											]
+										}
+									],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"storedProcedureName": "[meta].[p_fill_process_log]",
+										"storedProcedureParameters": {
+											"in_activity_type": {
+												"value": {
+													"value": "Data Flow",
+													"type": "Expression"
+												},
+												"type": "String"
+											},
+											"in_message": {
+												"value": {
+													"value": "@concat('Error: activity SKID_Assignment_and SCD_wo_truncate Output:', activity('SKID_Assignment_and SCD_wo_truncate').Error.Message)\n\n",
+													"type": "Expression"
+												},
+												"type": "String"
+											},
+											"in_pipeline_name": {
+												"value": {
+													"value": "@pipeline().Pipeline",
+													"type": "Expression"
+												},
+												"type": "String"
+											},
+											"in_pipeline_parameters": {
+												"value": "None",
+												"type": "String"
+											},
+											"in_pipeline_run_id": {
+												"value": {
+													"value": "@pipeline().RunId",
+													"type": "Expression"
+												},
+												"type": "String"
+											},
+											"in_status_code": {
+												"value": "FINISHED WITH ERRORS",
+												"type": "String"
+											}
+										}
+									},
+									"linkedServiceName": {
+										"referenceName": "LS_AzureSQL_metadataDB",
+										"type": "LinkedServiceReference"
+									}
+								}
+							]
+						},
+						{
+							"value": "T-N-SCD-N-SKID-N",
+							"activities": [
+								{
+									"name": "STD_wo SCD_wo_truncate_wo_SKID_assignment",
+									"description": "Data Flow responsible for standardization without SKID assignment and without SCD and without truncate target table option.",
+									"type": "ExecuteDataFlow",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"dataflow": {
+											"referenceName": "Standardization_Data_Flow_without_SKID_assignment_and_without_truncate",
+											"type": "DataFlowReference",
+											"parameters": {
+												"df_trgt_object_skid": {
+													"value": "@pipeline().parameters.p_auto_trgt_object_skid",
+													"type": "Expression"
+												},
+												"df_trgt_key_column_list": {
+													"value": "'@{pipeline().parameters.p_auto_trgt_key_column_list}'",
+													"type": "Expression"
+												},
+												"df_trgt_non_key_column_list": {
+													"value": "'@{pipeline().parameters.p_auto_trgt_non_key_column_list}'",
+													"type": "Expression"
+												},
+												"df_trgt_schema_name": {
+													"value": "'@{pipeline().parameters.p_auto_trgt_schema_name}'",
+													"type": "Expression"
+												},
+												"df_trgt_table_name": {
+													"value": "'@{pipeline().parameters.p_auto_trgt_table_name}'",
+													"type": "Expression"
+												},
+												"df_std_sql_query": {
+													"value": "@pipeline().parameters.p_auto_std_sql_query",
+													"type": "Expression"
+												},
+												"df_log_process_date_column_name": {
+													"value": "'@{pipeline().parameters.p_auto_process_date_column_name}'",
+													"type": "Expression"
+												},
+												"df_active_column_name": {
+													"value": "'@{pipeline().parameters.p_auto_trgt_active_column_name}'",
+													"type": "Expression"
+												},
+												"df_log_process_id": {
+													"value": "@pipeline().parameters.p_auto_log_process_id",
+													"type": "Expression"
+												},
+												"df_scd_end_date_column_name": {
+													"value": "'@{pipeline().parameters.p_auto_trgt_valid_to_column_name}'",
+													"type": "Expression"
+												},
+												"df_log_process_id_column_name": {
+													"value": "'@{pipeline().parameters.p_auto_log_process_id}'",
+													"type": "Expression"
+												}
+											},
+											"datasetParameters": {
+												"TargetObject": {
+													"schema_name": {
+														"value": "@pipeline().parameters.p_auto_trgt_schema_name",
+														"type": "Expression"
+													},
+													"table_name": {
+														"value": "@pipeline().parameters.p_auto_trgt_table_name",
+														"type": "Expression"
+													}
+												},
+												"TargetObjectSink": {
+													"schema_name": {
+														"value": "@pipeline().parameters.p_auto_trgt_schema_name",
+														"type": "Expression"
+													},
+													"table_name": {
+														"value": "@pipeline().parameters.p_auto_trgt_table_name",
+														"type": "Expression"
+													}
+												}
+											}
+										},
+										"integrationRuntime": {
+											"referenceName": "integrationRuntimeManagedVN",
+											"type": "IntegrationRuntimeReference"
+										},
+										"traceLevel": "Fine"
+									}
+								},
+								{
+									"name": "STD_wo SCD_wo_truncate_wo_SKID_assignment_Success",
+									"type": "SqlServerStoredProcedure",
+									"dependsOn": [
+										{
+											"activity": "STD_wo SCD_wo_truncate_wo_SKID_assignment",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"storedProcedureName": "[meta].[p_fill_process_log]",
+										"storedProcedureParameters": {
+											"in_activity_type": {
+												"value": {
+													"value": "Data Flow",
+													"type": "Expression"
+												},
+												"type": "String"
+											},
+											"in_message": {
+												"value": {
+													"value": "@concat('STD_wo SCD_wo_truncate_wo_SKID_assignment: ', activity('STD_wo SCD_wo_truncate_wo_SKID_assignment').output.runStatus)",
+													"type": "Expression"
+												},
+												"type": "String"
+											},
+											"in_pipeline_name": {
+												"value": {
+													"value": "@pipeline().Pipeline",
+													"type": "Expression"
+												},
+												"type": "String"
+											},
+											"in_pipeline_parameters": {
+												"value": "None",
+												"type": "String"
+											},
+											"in_pipeline_run_id": {
+												"value": {
+													"value": "@pipeline().RunId",
+													"type": "Expression"
+												},
+												"type": "String"
+											},
+											"in_status_code": {
+												"value": "INFO",
+												"type": "String"
+											}
+										}
+									},
+									"linkedServiceName": {
+										"referenceName": "LS_AzureSQL_metadataDB",
+										"type": "LinkedServiceReference"
+									}
+								},
+								{
+									"name": "STD_wo SCD_wo_truncate_wo_SKID_assignment_Log_fail",
+									"type": "SqlServerStoredProcedure",
+									"dependsOn": [
+										{
+											"activity": "STD_wo SCD_wo_truncate_wo_SKID_assignment",
+											"dependencyConditions": [
+												"Failed"
+											]
+										}
+									],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"storedProcedureName": "[meta].[p_fill_process_log]",
+										"storedProcedureParameters": {
+											"in_activity_type": {
+												"value": {
+													"value": "Data Flow",
+													"type": "Expression"
+												},
+												"type": "String"
+											},
+											"in_message": {
+												"value": {
+													"value": "@concat('Error: activity STD_wo SCD_wo_truncate_wo_SKID_assignment Output:', activity('STD_wo SCD_wo_truncate_wo_SKID_assignment').Error.Message)\n\n",
+													"type": "Expression"
+												},
+												"type": "String"
+											},
+											"in_pipeline_name": {
+												"value": {
+													"value": "@pipeline().Pipeline",
+													"type": "Expression"
+												},
+												"type": "String"
+											},
+											"in_pipeline_parameters": {
+												"value": "None",
+												"type": "String"
+											},
+											"in_pipeline_run_id": {
+												"value": {
+													"value": "@pipeline().RunId",
+													"type": "Expression"
+												},
+												"type": "String"
+											},
+											"in_status_code": {
+												"value": "FINISHED WITH ERRORS",
+												"type": "String"
+											}
+										}
+									},
+									"linkedServiceName": {
+										"referenceName": "LS_AzureSQL_metadataDB",
+										"type": "LinkedServiceReference"
+									}
+								}
+							]
+						},
+						{
+							"value": "T-Y-SCD-N-SKID-N",
+							"activities": [
+								{
+									"name": "STD_wo_SKID_Assignment_wo SCD_w_truncate",
+									"description": "Data Flow responsible for standardization without SKID assignment and without SCD with truncate target table option.",
+									"type": "ExecuteDataFlow",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"dataflow": {
+											"referenceName": "Standardization_Data_Flow_without_SKID_assignment_and_with_truncate",
+											"type": "DataFlowReference",
+											"parameters": {
+												"df_trgt_object_skid": {
+													"value": "@pipeline().parameters.p_auto_trgt_object_skid",
+													"type": "Expression"
+												},
+												"df_trgt_key_column_list": {
+													"value": "'@{pipeline().parameters.p_auto_trgt_key_column_list}'",
+													"type": "Expression"
+												},
+												"df_trgt_non_key_column_list": {
+													"value": "'@{pipeline().parameters.p_auto_trgt_non_key_column_list}'",
+													"type": "Expression"
+												},
+												"df_trgt_schema_name": {
+													"value": "'@{pipeline().parameters.p_auto_trgt_schema_name}'",
+													"type": "Expression"
+												},
+												"df_trgt_table_name": {
+													"value": "'@{pipeline().parameters.p_auto_trgt_table_name}'",
+													"type": "Expression"
+												},
+												"df_std_sql_query": {
+													"value": "@pipeline().parameters.p_auto_std_sql_query",
+													"type": "Expression"
+												},
+												"df_log_process_date_column_name": {
+													"value": "'@{pipeline().parameters.p_auto_process_date_column_name}'",
+													"type": "Expression"
+												},
+												"df_active_column_name": {
+													"value": "'@{pipeline().parameters.p_auto_trgt_active_column_name}'",
+													"type": "Expression"
+												},
+												"df_log_process_id": {
+													"value": "@pipeline().parameters.p_auto_log_process_id",
+													"type": "Expression"
+												},
+												"df_scd_end_date_column_name": {
+													"value": "'@{pipeline().parameters.p_auto_trgt_valid_to_column_name}'",
+													"type": "Expression"
+												},
+												"df_log_process_id_column_name": {
+													"value": "'@{pipeline().parameters.p_auto_process_id_column_name}'",
+													"type": "Expression"
+												}
+											},
+											"datasetParameters": {
+												"TargetObject": {
+													"schema_name": {
+														"value": "@pipeline().parameters.p_auto_trgt_schema_name",
+														"type": "Expression"
+													},
+													"table_name": {
+														"value": "@pipeline().parameters.p_auto_trgt_table_name",
+														"type": "Expression"
+													}
+												},
+												"TargetObjectSink": {
+													"schema_name": {
+														"value": "@pipeline().parameters.p_auto_trgt_schema_name",
+														"type": "Expression"
+													},
+													"table_name": {
+														"value": "@pipeline().parameters.p_auto_trgt_table_name",
+														"type": "Expression"
+													}
+												}
+											}
+										},
+										"integrationRuntime": {
+											"referenceName": "integrationRuntimeManagedVN",
+											"type": "IntegrationRuntimeReference"
+										},
+										"traceLevel": "Fine"
+									}
+								},
+								{
+									"name": "STD_wo_SKID_Assignment_wo SCD_w_truncate_Success",
+									"type": "SqlServerStoredProcedure",
+									"dependsOn": [
+										{
+											"activity": "STD_wo_SKID_Assignment_wo SCD_w_truncate",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"storedProcedureName": "[meta].[p_fill_process_log]",
+										"storedProcedureParameters": {
+											"in_activity_type": {
+												"value": {
+													"value": "Data Flow",
+													"type": "Expression"
+												},
+												"type": "String"
+											},
+											"in_message": {
+												"value": {
+													"value": "@concat('STD_wo_SKID_Assignment_wo SCD_w_truncate: ', activity('STD_wo_SKID_Assignment_wo SCD_w_truncate').output.runStatus)",
+													"type": "Expression"
+												},
+												"type": "String"
+											},
+											"in_pipeline_name": {
+												"value": {
+													"value": "@pipeline().Pipeline",
+													"type": "Expression"
+												},
+												"type": "String"
+											},
+											"in_pipeline_parameters": {
+												"value": "None",
+												"type": "String"
+											},
+											"in_pipeline_run_id": {
+												"value": {
+													"value": "@pipeline().RunId",
+													"type": "Expression"
+												},
+												"type": "String"
+											},
+											"in_status_code": {
+												"value": "INFO",
+												"type": "String"
+											}
+										}
+									},
+									"linkedServiceName": {
+										"referenceName": "LS_AzureSQL_metadataDB",
+										"type": "LinkedServiceReference"
+									}
+								},
+								{
+									"name": "STD_wo_SKID_Assignment_wo SCD_w_truncate_Log_fail",
+									"type": "SqlServerStoredProcedure",
+									"dependsOn": [
+										{
+											"activity": "STD_wo_SKID_Assignment_wo SCD_w_truncate",
+											"dependencyConditions": [
+												"Failed"
+											]
+										}
+									],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"storedProcedureName": "[meta].[p_fill_process_log]",
+										"storedProcedureParameters": {
+											"in_activity_type": {
+												"value": {
+													"value": "Data Flow",
+													"type": "Expression"
+												},
+												"type": "String"
+											},
+											"in_message": {
+												"value": {
+													"value": "@concat('Error: activity STD_wo_SKID_Assignment_wo SCD_w_truncate Output:', activity('STD_wo_SKID_Assignment_wo SCD_w_truncate').Error.Message)\n\n",
+													"type": "Expression"
+												},
+												"type": "String"
+											},
+											"in_pipeline_name": {
+												"value": {
+													"value": "@pipeline().Pipeline",
+													"type": "Expression"
+												},
+												"type": "String"
+											},
+											"in_pipeline_parameters": {
+												"value": "None",
+												"type": "String"
+											},
+											"in_pipeline_run_id": {
+												"value": {
+													"value": "@pipeline().RunId",
+													"type": "Expression"
+												},
+												"type": "String"
+											},
+											"in_status_code": {
+												"value": "FINISHED WITH ERRORS",
+												"type": "String"
+											}
+										}
+									},
+									"linkedServiceName": {
+										"referenceName": "LS_AzureSQL_metadataDB",
+										"type": "LinkedServiceReference"
+									}
+								}
+							]
+						},
+						{
+							"value": "T-N-SCD-N-SKID-Y",
+							"activities": [
+								{
+									"name": "SKID_Assignment_wo SCD_wo_truncate",
+									"description": "Data Flow responsible for standardization with SKID assignment and without SCD and without truncate target table option.",
+									"type": "ExecuteDataFlow",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"dataflow": {
+											"referenceName": "Standardization_Data_Flow_with_SKID_assignment_and_without_truncate",
+											"type": "DataFlowReference",
+											"parameters": {
+												"df_trgt_object_skid": {
+													"value": "@pipeline().parameters.p_auto_trgt_object_skid",
+													"type": "Expression"
+												},
+												"df_trgt_key_column_list": {
+													"value": "'@{pipeline().parameters.p_auto_trgt_key_column_list}'",
+													"type": "Expression"
+												},
+												"df_trgt_non_key_column_list": {
+													"value": "'@{pipeline().parameters.p_auto_trgt_non_key_column_list}'",
+													"type": "Expression"
+												},
+												"df_trgt_skid_column_name": {
+													"value": "'@{pipeline().parameters.p_auto_trgt_skid_column_name}'",
+													"type": "Expression"
+												},
+												"df_trgt_schema_name": {
+													"value": "'@{pipeline().parameters.p_auto_trgt_schema_name}'",
+													"type": "Expression"
+												},
+												"df_trgt_table_name": {
+													"value": "'@{pipeline().parameters.p_auto_trgt_table_name}'",
+													"type": "Expression"
+												},
+												"df_std_sql_query": {
+													"value": "@pipeline().parameters.p_auto_std_sql_query",
+													"type": "Expression"
+												},
+												"df_log_process_date_column_name": {
+													"value": "'@{pipeline().parameters.p_auto_process_date_column_name}'",
+													"type": "Expression"
+												},
+												"df_active_column_name": {
+													"value": "'@{pipeline().parameters.p_auto_trgt_active_column_name}'",
+													"type": "Expression"
+												},
+												"df_log_process_id": {
+													"value": "@pipeline().parameters.p_auto_log_process_id",
+													"type": "Expression"
+												},
+												"df_scd_end_date_column_name": {
+													"value": "'@{pipeline().parameters.p_auto_trgt_valid_to_column_name}'",
+													"type": "Expression"
+												},
+												"df_log_process_id_column_name": {
+													"value": "'@{pipeline().parameters.p_auto_process_id_column_name}'",
+													"type": "Expression"
+												}
+											},
+											"datasetParameters": {
+												"TargetObject": {
+													"schema_name": {
+														"value": "@pipeline().parameters.p_auto_trgt_schema_name",
+														"type": "Expression"
+													},
+													"table_name": {
+														"value": "@pipeline().parameters.p_auto_trgt_table_name",
+														"type": "Expression"
+													}
+												},
+												"TargetObjectSink": {
+													"schema_name": {
+														"value": "@pipeline().parameters.p_auto_trgt_schema_name",
+														"type": "Expression"
+													},
+													"table_name": {
+														"value": "@pipeline().parameters.p_auto_trgt_table_name",
+														"type": "Expression"
+													}
+												}
+											}
+										},
+										"integrationRuntime": {
+											"referenceName": "integrationRuntimeManagedVN",
+											"type": "IntegrationRuntimeReference"
+										},
+										"traceLevel": "Fine"
+									}
+								},
+								{
+									"name": "SKID_Assignment_wo SCD_wo_truncate_Success",
+									"type": "SqlServerStoredProcedure",
+									"dependsOn": [
+										{
+											"activity": "SKID_Assignment_wo SCD_wo_truncate",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"storedProcedureName": "[meta].[p_fill_process_log]",
+										"storedProcedureParameters": {
+											"in_activity_type": {
+												"value": {
+													"value": "Data Flow",
+													"type": "Expression"
+												},
+												"type": "String"
+											},
+											"in_message": {
+												"value": {
+													"value": "@concat('SKID_Assignment_wo SCD_wo_truncate: ', activity('SKID_Assignment_wo SCD_wo_truncate').output.runStatus)",
+													"type": "Expression"
+												},
+												"type": "String"
+											},
+											"in_pipeline_name": {
+												"value": {
+													"value": "@pipeline().Pipeline",
+													"type": "Expression"
+												},
+												"type": "String"
+											},
+											"in_pipeline_parameters": {
+												"value": "None",
+												"type": "String"
+											},
+											"in_pipeline_run_id": {
+												"value": {
+													"value": "@pipeline().RunId",
+													"type": "Expression"
+												},
+												"type": "String"
+											},
+											"in_status_code": {
+												"value": "INFO",
+												"type": "String"
+											}
+										}
+									},
+									"linkedServiceName": {
+										"referenceName": "LS_AzureSQL_metadataDB",
+										"type": "LinkedServiceReference"
+									}
+								},
+								{
+									"name": "SKID_Assignment_wo SCD_wo_truncate_Log_fail",
+									"type": "SqlServerStoredProcedure",
+									"dependsOn": [
+										{
+											"activity": "SKID_Assignment_wo SCD_wo_truncate",
+											"dependencyConditions": [
+												"Failed"
+											]
+										}
+									],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"storedProcedureName": "[meta].[p_fill_process_log]",
+										"storedProcedureParameters": {
+											"in_activity_type": {
+												"value": {
+													"value": "Data Flow",
+													"type": "Expression"
+												},
+												"type": "String"
+											},
+											"in_message": {
+												"value": {
+													"value": "@concat('Error: activity SKID_Assignment_wo SCD_wo_truncate. Output:', activity('SKID_Assignment_wo SCD_wo_truncate').Error.Message)\n\n",
+													"type": "Expression"
+												},
+												"type": "String"
+											},
+											"in_pipeline_name": {
+												"value": {
+													"value": "@pipeline().Pipeline",
+													"type": "Expression"
+												},
+												"type": "String"
+											},
+											"in_pipeline_parameters": {
+												"value": "None",
+												"type": "String"
+											},
+											"in_pipeline_run_id": {
+												"value": {
+													"value": "@pipeline().RunId",
+													"type": "Expression"
+												},
+												"type": "String"
+											},
+											"in_status_code": {
+												"value": "FINISHED WITH ERRORS",
+												"type": "String"
+											}
+										}
+									},
+									"linkedServiceName": {
+										"referenceName": "LS_AzureSQL_metadataDB",
+										"type": "LinkedServiceReference"
+									}
+								}
+							]
+						},
+						{
+							"value": "T-Y-SCD-N-SKID-Y",
+							"activities": [
+								{
+									"name": "SKID_Assignment_wo SCD_w_truncate",
+									"description": "Data Flow responsible for standardization with SKID assignment and without SCD and with truncate target table option.",
+									"type": "ExecuteDataFlow",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"dataflow": {
+											"referenceName": "Standardization_Data_Flow_with_SKID_assignment_and_with_truncate",
+											"type": "DataFlowReference",
+											"parameters": {
+												"df_trgt_object_skid": {
+													"value": "@pipeline().parameters.p_auto_trgt_object_skid",
+													"type": "Expression"
+												},
+												"df_trgt_key_column_list": {
+													"value": "'@{pipeline().parameters.p_auto_trgt_key_column_list}'",
+													"type": "Expression"
+												},
+												"df_trgt_non_key_column_list": {
+													"value": "'@{pipeline().parameters.p_auto_trgt_non_key_column_list}'",
+													"type": "Expression"
+												},
+												"df_trgt_skid_column_name": {
+													"value": "'@{pipeline().parameters.p_auto_trgt_object_skid}'",
+													"type": "Expression"
+												},
+												"df_trgt_schema_name": {
+													"value": "'@{pipeline().parameters.p_auto_trgt_schema_name}'",
+													"type": "Expression"
+												},
+												"df_trgt_table_name": {
+													"value": "'@{pipeline().parameters.p_auto_trgt_table_name}'",
+													"type": "Expression"
+												},
+												"df_std_sql_query": {
+													"value": "@pipeline().parameters.p_auto_std_sql_query",
+													"type": "Expression"
+												},
+												"df_log_process_date_column_name": {
+													"value": "'@{pipeline().parameters.p_auto_process_date_column_name}'",
+													"type": "Expression"
+												},
+												"df_active_column_name": {
+													"value": "'@{pipeline().parameters.p_auto_trgt_active_column_name}'",
+													"type": "Expression"
+												},
+												"df_log_process_id": {
+													"value": "@pipeline().parameters.p_auto_log_process_id",
+													"type": "Expression"
+												},
+												"df_scd_end_date_column_name": {
+													"value": "'@{pipeline().parameters.p_auto_trgt_valid_to_column_name}'",
+													"type": "Expression"
+												},
+												"df_log_process_id_column_name": {
+													"value": "'@{pipeline().parameters.p_auto_process_id_column_name}'",
+													"type": "Expression"
+												}
+											},
+											"datasetParameters": {
+												"TargetObject": {
+													"schema_name": {
+														"value": "@pipeline().parameters.p_auto_trgt_schema_name",
+														"type": "Expression"
+													},
+													"table_name": {
+														"value": "@pipeline().parameters.p_auto_trgt_table_name",
+														"type": "Expression"
+													}
+												},
+												"TargetObjectSink": {
+													"schema_name": {
+														"value": "@pipeline().parameters.p_auto_trgt_schema_name",
+														"type": "Expression"
+													},
+													"table_name": {
+														"value": "@pipeline().parameters.p_auto_trgt_table_name",
+														"type": "Expression"
+													}
+												}
+											}
+										},
+										"integrationRuntime": {
+											"referenceName": "integrationRuntimeManagedVN",
+											"type": "IntegrationRuntimeReference"
+										},
+										"traceLevel": "Fine"
+									}
+								},
+								{
+									"name": "SKID_Assignment_wo SCD_w_truncate_Success",
+									"type": "SqlServerStoredProcedure",
+									"dependsOn": [
+										{
+											"activity": "SKID_Assignment_wo SCD_w_truncate",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"storedProcedureName": "[meta].[p_fill_process_log]",
+										"storedProcedureParameters": {
+											"in_activity_type": {
+												"value": {
+													"value": "Data Flow",
+													"type": "Expression"
+												},
+												"type": "String"
+											},
+											"in_message": {
+												"value": {
+													"value": "@concat('SKID_Assignment_wo SCD_w_truncate: ', activity('SKID_Assignment_wo SCD_w_truncate').output.runStatus)",
+													"type": "Expression"
+												},
+												"type": "String"
+											},
+											"in_pipeline_name": {
+												"value": {
+													"value": "@pipeline().Pipeline",
+													"type": "Expression"
+												},
+												"type": "String"
+											},
+											"in_pipeline_parameters": {
+												"value": "None",
+												"type": "String"
+											},
+											"in_pipeline_run_id": {
+												"value": {
+													"value": "@pipeline().RunId",
+													"type": "Expression"
+												},
+												"type": "String"
+											},
+											"in_status_code": {
+												"value": "INFO",
+												"type": "String"
+											}
+										}
+									},
+									"linkedServiceName": {
+										"referenceName": "LS_AzureSQL_metadataDB",
+										"type": "LinkedServiceReference"
+									}
+								},
+								{
+									"name": "SKID_Assignment_wo SCD_w_truncate_Log_fail",
+									"type": "SqlServerStoredProcedure",
+									"dependsOn": [
+										{
+											"activity": "SKID_Assignment_wo SCD_w_truncate",
+											"dependencyConditions": [
+												"Failed"
+											]
+										}
+									],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"storedProcedureName": "[meta].[p_fill_process_log]",
+										"storedProcedureParameters": {
+											"in_activity_type": {
+												"value": {
+													"value": "Data Flow",
+													"type": "Expression"
+												},
+												"type": "String"
+											},
+											"in_message": {
+												"value": {
+													"value": "@concat('Error: activity SKID_Assignment_wo SCD_w_truncate. Output:', activity('SKID_Assignment_wo SCD_w_truncate').Error.Message)\n\n",
+													"type": "Expression"
+												},
+												"type": "String"
+											},
+											"in_pipeline_name": {
+												"value": {
+													"value": "@pipeline().Pipeline",
+													"type": "Expression"
+												},
+												"type": "String"
+											},
+											"in_pipeline_parameters": {
+												"value": "None",
+												"type": "String"
+											},
+											"in_pipeline_run_id": {
+												"value": {
+													"value": "@pipeline().RunId",
+													"type": "Expression"
+												},
+												"type": "String"
+											},
+											"in_status_code": {
+												"value": "FINISHED WITH ERRORS",
+												"type": "String"
+											}
+										}
+									},
+									"linkedServiceName": {
+										"referenceName": "LS_AzureSQL_metadataDB",
+										"type": "LinkedServiceReference"
+									}
+								}
+							]
+						},
+						{
+							"value": "T-N-SCD-Y-SKID-N",
+							"activities": [
+								{
+									"name": "SCD_wo_truncate_wo_SKID_assignment",
+									"description": "Data Flow responsible for standardization without SKID assignment and with SCD without truncate target table option.",
+									"type": "ExecuteDataFlow",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"dataflow": {
+											"referenceName": "Standardization_Data_Flow_without_SKID_assignment_and_with_SCD",
+											"type": "DataFlowReference",
+											"parameters": {
+												"df_trgt_object_skid": {
+													"value": "@pipeline().parameters.p_auto_trgt_object_skid",
+													"type": "Expression"
+												},
+												"df_trgt_key_column_list": {
+													"value": "'@{pipeline().parameters.p_auto_trgt_key_column_list}'",
+													"type": "Expression"
+												},
+												"df_trgt_active_column_name": {
+													"value": "'@{pipeline().parameters.p_auto_trgt_active_column_name}'",
+													"type": "Expression"
+												},
+												"df_trgt_non_key_column_list": {
+													"value": "'@{pipeline().parameters.p_auto_trgt_non_key_column_list}'",
+													"type": "Expression"
+												},
+												"df_log_process_id": {
+													"value": "@pipeline().parameters.p_auto_log_process_id",
+													"type": "Expression"
+												},
+												"df_scd_begin_date_column_name": {
+													"value": "'@{pipeline().parameters.p_auto_trgt_valid_from_column_name}'",
+													"type": "Expression"
+												},
+												"df_scd_end_date_column_name": {
+													"value": "'@{pipeline().parameters.p_auto_trgt_valid_to_column_name}'",
+													"type": "Expression"
+												},
+												"df_std_sql_query": {
+													"value": "@pipeline().parameters.p_auto_std_sql_query",
+													"type": "Expression"
+												},
+												"df_log_process_date_column_name": {
+													"value": "'@{pipeline().parameters.p_auto_process_date_column_name}'",
+													"type": "Expression"
+												},
+												"df_log_process_id_column_name": {
+													"value": "'@{pipeline().parameters.p_auto_process_id_column_name}'",
+													"type": "Expression"
+												}
+											},
+											"datasetParameters": {
+												"TargetObject": {
+													"schema_name": {
+														"value": "@pipeline().parameters.p_auto_trgt_schema_name",
+														"type": "Expression"
+													},
+													"table_name": {
+														"value": "@pipeline().parameters.p_auto_trgt_table_name",
+														"type": "Expression"
+													}
+												},
+												"DimHist": {
+													"schema_name": {
+														"value": "@pipeline().parameters.p_auto_trgt_hist_schema_name",
+														"type": "Expression"
+													},
+													"table_name": {
+														"value": "@pipeline().parameters.p_auto_trgt_hist_table_name",
+														"type": "Expression"
+													}
+												},
+												"TargetObjectInsertSink": {
+													"schema_name": {
+														"value": "@pipeline().parameters.p_auto_trgt_schema_name",
+														"type": "Expression"
+													},
+													"table_name": {
+														"value": "@pipeline().parameters.p_auto_trgt_table_name",
+														"type": "Expression"
+													}
+												},
+												"HistTable": {
+													"schema_name": {
+														"value": "@pipeline().parameters.p_auto_trgt_hist_schema_name",
+														"type": "Expression"
+													},
+													"table_name": {
+														"value": "@pipeline().parameters.p_auto_trgt_hist_table_name",
+														"type": "Expression"
+													}
+												}
+											}
+										},
+										"integrationRuntime": {
+											"referenceName": "integrationRuntimeManagedVN",
+											"type": "IntegrationRuntimeReference"
+										},
+										"traceLevel": "Fine"
+									}
+								},
+								{
+									"name": "SCD_wo_truncate_wo_SKID_assignment_Tables_Success",
+									"type": "SqlServerStoredProcedure",
+									"dependsOn": [
+										{
+											"activity": "SCD_wo_truncate_wo_SKID_assignment",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"storedProcedureName": "[meta].[p_fill_process_log]",
+										"storedProcedureParameters": {
+											"in_activity_type": {
+												"value": {
+													"value": "Data Flow",
+													"type": "Expression"
+												},
+												"type": "String"
+											},
+											"in_message": {
+												"value": {
+													"value": "@concat('SCD_wo_truncate_wo_SKID_assignment: ', activity('SCD_wo_truncate_wo_SKID_assignment').output.runStatus)",
+													"type": "Expression"
+												},
+												"type": "String"
+											},
+											"in_pipeline_name": {
+												"value": {
+													"value": "@pipeline().Pipeline",
+													"type": "Expression"
+												},
+												"type": "String"
+											},
+											"in_pipeline_parameters": {
+												"value": "None",
+												"type": "String"
+											},
+											"in_pipeline_run_id": {
+												"value": {
+													"value": "@pipeline().RunId",
+													"type": "Expression"
+												},
+												"type": "String"
+											},
+											"in_status_code": {
+												"value": "INFO",
+												"type": "String"
+											}
+										}
+									},
+									"linkedServiceName": {
+										"referenceName": "LS_AzureSQL_metadataDB",
+										"type": "LinkedServiceReference"
+									}
+								},
+								{
+									"name": "SCD_wo_truncate_wo_SKID_assignment_Log_fail",
+									"type": "SqlServerStoredProcedure",
+									"dependsOn": [
+										{
+											"activity": "SCD_wo_truncate_wo_SKID_assignment",
+											"dependencyConditions": [
+												"Failed"
+											]
+										}
+									],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"storedProcedureName": "[meta].[p_fill_process_log]",
+										"storedProcedureParameters": {
+											"in_activity_type": {
+												"value": {
+													"value": "Data Flow",
+													"type": "Expression"
+												},
+												"type": "String"
+											},
+											"in_message": {
+												"value": {
+													"value": "@concat('Error: activity SCD_wo_truncate_wo_SKID_assignment. Output:', activity('SCD_wo_truncate_wo_SKID_assignment').Error.Message)\n\n",
+													"type": "Expression"
+												},
+												"type": "String"
+											},
+											"in_pipeline_name": {
+												"value": {
+													"value": "@pipeline().Pipeline",
+													"type": "Expression"
+												},
+												"type": "String"
+											},
+											"in_pipeline_parameters": {
+												"value": "None",
+												"type": "String"
+											},
+											"in_pipeline_run_id": {
+												"value": {
+													"value": "@pipeline().RunId",
+													"type": "Expression"
+												},
+												"type": "String"
+											},
+											"in_status_code": {
+												"value": "FINISHED WITH ERRORS",
+												"type": "String"
+											}
+										}
+									},
+									"linkedServiceName": {
+										"referenceName": "LS_AzureSQL_metadataDB",
+										"type": "LinkedServiceReference"
+									}
+								}
+							]
+						}
+					],
+					"defaultActivities": [
+						{
+							"name": "Wait1",
+							"type": "Wait",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"waitTimeInSeconds": 1
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "Set_Standardization_Option",
+				"description": "Activity responsible for concatenating metadata for Standardization.",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "Pipeline_Start_Log",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "v_standardization_option",
+					"value": {
+						"value": "@concat('T-',pipeline().parameters.p_auto_trgt_truncate_ind,'-SCD-',pipeline().parameters.p_auto_trgt_scd_ind,'-SKID-',pipeline().parameters.p_auto_skid_assignment_ind)",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "Get_source_objects_skids",
+				"description": "Get list of objects with their storage paths needed for standardization of given target object.",
+				"type": "Lookup",
+				"dependsOn": [
+					{
+						"activity": "Set_Standardization_Option",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 1,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": {
+							"value": "select distinct\n           ol.object_skid\n         , ol.object_name\n         , JSON_VALUE(pipeline_runtime_param_json,'$.p_trgt_container_name') as container_name\n         , JSON_VALUE(pipeline_runtime_param_json,'$.p_trgt_folder_name')    as folder_name\nfrom\n           meta.source_to_target_mapping_cfg_vw sttm\n           inner join\n                      meta.object_column_lkp ocl\n                      on\n                                 ocl.object_column_skid = sttm.source_object_column_skid\n           inner join\n                      meta.object_lkp ol\n                      on\n                                 ol.object_skid = ocl.object_skid\n           inner join\n                      meta.pipeline_instance_runtime_cfg run\n                      on\n                                 run.object_skid = ol.object_skid\nwhere\n           target_object_skid       = @{pipeline().parameters.p_auto_trgt_object_skid}\n           and ol.target_object_ind = 'N'\nUNION\nSELECT\n           cast(sk.value as bigint)\n         , ol.object_name\n         , JSON_VALUE(pipeline_runtime_param_json,'$.p_trgt_container_name') as container_name\n         , JSON_VALUE(pipeline_runtime_param_json,'$.p_trgt_folder_name')    as folder_name\nfrom\n           meta.object_from_join_cfg fj cross apply string_split(fj.source_object_skids_txt,',') sk\n           inner join\n                      meta.object_lkp ol\n                      on\n                                 ol.object_skid = sk.value\n           inner join\n                      meta.pipeline_instance_runtime_cfg run\n                      on\n                                 run.object_skid = ol.object_skid\nwhere\n           fj.target_object_skid    = @{pipeline().parameters.p_auto_trgt_object_skid}\n           and ol.target_object_ind = 'N'",
+							"type": "Expression"
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "ds_metadata_db",
+						"type": "DatasetReference"
+					},
+					"firstRowOnly": false
+				}
+			},
+			{
+				"name": "Copy_Source_Object_To_Staging",
+				"description": "Iterate over source objects in order to copy their contents to staging schema.",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "Get_source_objects_skids_Success",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('Get_source_objects_skids').output.value",
+						"type": "Expression"
+					},
+					"activities": [
+						{
+							"name": "Copy_data_to_staging",
+							"description": "Activity responsible for copying source data to staging",
+							"type": "Copy",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "ParquetSource",
+									"storeSettings": {
+										"type": "AzureBlobFSReadSettings",
+										"recursive": true,
+										"wildcardFolderPath": {
+											"value": "@item().folder_name",
+											"type": "Expression"
+										},
+										"wildcardFileName": "*.parquet",
+										"enablePartitionDiscovery": true
+									}
+								},
+								"sink": {
+									"type": "AzureSqlSink",
+									"tableOption": "autoCreate"
+								},
+								"enableStaging": false,
+								"translator": {
+									"type": "TabularTranslator",
+									"typeConversion": true,
+									"typeConversionSettings": {
+										"allowDataTruncation": true,
+										"treatBooleanAsNumber": false
+									}
+								}
+							},
+							"inputs": [
+								{
+									"referenceName": "ds_adslv2_parquet_no_file_name",
+									"type": "DatasetReference",
+									"parameters": {
+										"ds_folder_name": {
+											"value": "@item().folder_name",
+											"type": "Expression"
+										},
+										"ds_container_name": {
+											"value": "@item().container_name",
+											"type": "Expression"
+										}
+									}
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "ds_sqlserver_idm_parametrized",
+									"type": "DatasetReference",
+									"parameters": {
+										"schema_name": {
+											"value": "@pipeline().parameters.p_auto_stg_schema_name",
+											"type": "Expression"
+										},
+										"table_name": {
+											"value": "@toLower(concat(item().object_name,'_',pipeline().parameters.p_auto_log_process_id))",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						},
+						{
+							"name": "Copy_data_to_staging_Success",
+							"type": "SqlServerStoredProcedure",
+							"dependsOn": [
+								{
+									"activity": "Copy_data_to_staging",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": "[meta].[p_fill_process_log]",
+								"storedProcedureParameters": {
+									"in_activity_type": {
+										"value": {
+											"value": "Copy activity",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"in_message": {
+										"value": {
+											"value": "@concat('Copy_data_to_staging -> Data read:', activity('Copy_data_to_staging').output.dataRead,', Data written: ', activity('Copy_data_to_staging').output.dataWritten,', Files read: ', activity('Copy_data_to_staging').output.filesRead,', Rows read: ', activity('Copy_data_to_staging').output.rowsRead,', Rows copied: ', activity('Copy_data_to_staging').output.rowsCopied,', Copy duration: ', activity('Copy_data_to_staging').output.copyDuration)",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"in_pipeline_name": {
+										"value": {
+											"value": "@pipeline().Pipeline",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"in_pipeline_parameters": {
+										"value": "None",
+										"type": "String"
+									},
+									"in_pipeline_run_id": {
+										"value": {
+											"value": "@pipeline().RunId",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"in_status_code": {
+										"value": "INFO",
+										"type": "String"
+									}
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "LS_AzureSQL_metadataDB",
+								"type": "LinkedServiceReference"
+							}
+						},
+						{
+							"name": "Copy_data_to_staging_Fail",
+							"type": "SqlServerStoredProcedure",
+							"dependsOn": [
+								{
+									"activity": "Copy_data_to_staging",
+									"dependencyConditions": [
+										"Failed"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": "[meta].[p_fill_process_log]",
+								"storedProcedureParameters": {
+									"in_activity_type": {
+										"value": {
+											"value": "Copy activity",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"in_message": {
+										"value": {
+											"value": "@concat('Error: activity Copy_data_to_staging. Output:', activity('Copy_data_to_staging').output.errors)",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"in_pipeline_name": {
+										"value": {
+											"value": "@pipeline().Pipeline",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"in_pipeline_parameters": {
+										"value": "None",
+										"type": "String"
+									},
+									"in_pipeline_run_id": {
+										"value": {
+											"value": "@pipeline().RunId",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"in_status_code": {
+										"value": "FINISHED WITH ERRORS",
+										"type": "String"
+									}
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "LS_AzureSQL_metadataDB",
+								"type": "LinkedServiceReference"
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "Prepare_Drop_STG_Tables_SQL",
+				"description": "Activity responsible for preparing drop script for staging objects used for standardization of given target object.",
+				"type": "Lookup",
+				"dependsOn": [
+					{
+						"activity": "Choose_Standardization_option",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": {
+							"value": "SELECT CONCAT ( \t\tSTRING_AGG(CAST(dsql AS NVARCHAR(MAX)), '') \t\t,'SELECT 0' \t\t) AS dsql FROM ( \tSELECT DISTINCT CONCAT ( \t\t\t'DROP TABLE ' \t\t\t,'@{pipeline().parameters.p_auto_stg_schema_name}' \t\t\t,'.' \t\t\t,object_name \t\t\t,'_' \t\t\t,'@{pipeline().parameters.p_auto_log_process_id}' \t\t\t,';' \t\t\t) AS dsql \tFROM ( \t\tSELECT ol.object_skid \t\t\t,ol.object_name \t\t\t,JSON_VALUE(pipeline_runtime_param_json, '$.p_trgt_container_name') AS container_name \t\t\t,JSON_VALUE(pipeline_runtime_param_json, '$.p_trgt_folder_name') AS folder_name \t\tFROM meta.source_to_target_mapping_cfg_vw sttm \t\tINNER JOIN meta.object_column_lkp ocl ON ocl.object_column_skid = sttm.source_object_column_skid \t\tINNER JOIN meta.object_lkp ol ON ol.object_skid = ocl.object_skid \t\tINNER JOIN meta.pipeline_instance_runtime_cfg run ON run.object_skid = ol.object_skid \t\tWHERE target_object_skid = @{pipeline().parameters.p_auto_trgt_object_skid} \t\t\tAND ol.target_object_ind = 'N' \t\t \t\tUNION \t\t \t\tSELECT DISTINCT cast(sk.value AS BIGINT) \t\t\t,ol.object_name \t\t\t,JSON_VALUE(pipeline_runtime_param_json, '$.p_trgt_container_name') AS container_name \t\t\t,JSON_VALUE(pipeline_runtime_param_json, '$.p_trgt_folder_name') AS folder_name \t\tFROM meta.object_from_join_cfg fj \t\tCROSS APPLY string_split(fj.source_object_skids_txt, ',') sk \t\tINNER JOIN meta.object_lkp ol ON ol.object_skid = sk.value \t\tINNER JOIN meta.pipeline_instance_runtime_cfg run ON run.object_skid = ol.object_skid \t\tWHERE fj.target_object_skid = @{pipeline().parameters.p_auto_trgt_object_skid} \t\t\tAND ol.target_object_ind = 'N' \t\t) AS x \t) AS drops",
+							"type": "Expression"
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "ds_metadata_db",
+						"type": "DatasetReference"
+					}
+				}
+			},
+			{
+				"name": "Drop_STG_Tables",
+				"description": "Activity responsible for dropping\nstaging objects used for standardization of given target object.",
+				"type": "Lookup",
+				"dependsOn": [
+					{
+						"activity": "Prepare_Drop_STG_Tables_SQL_Success",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": {
+							"value": "@activity('Prepare_Drop_STG_Tables_SQL').output.firstRow.dsql",
+							"type": "Expression"
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "ds_sqlserver_idm",
+						"type": "DatasetReference"
+					}
+				}
+			},
+			{
+				"name": "Pipeline_Start_Log",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[meta].[p_fill_process_log]",
+					"storedProcedureParameters": {
+						"in_activity_type": {
+							"value": "Pipeline",
+							"type": "String"
+						},
+						"in_message": {
+							"value": {
+								"value": "@concat('Start of pipeline ', pipeline().Pipeline)",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"in_pipeline_name": {
+							"value": {
+								"value": "@pipeline().Pipeline",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"in_pipeline_parameters": {
+							"value": {
+								"value": "@concat('Parameters:-p_auto_trgt_object_skid-',pipeline().parameters.p_auto_trgt_object_skid,';-p_auto_trgt_key_column_list-',pipeline().parameters.p_auto_trgt_key_column_list,';-p_auto_trgt_non_key_column_list-',pipeline().parameters.p_auto_trgt_non_key_column_list,';-p_auto_trgt_skid_column_name-',pipeline().parameters.p_auto_trgt_skid_column_name,';-p_auto_trgt_truncate_ind-',pipeline().parameters.p_auto_trgt_truncate_ind,';-p_auto_trgt_scd_ind-',pipeline().parameters.p_auto_trgt_scd_ind,';-p_auto_trgt_active_column_name-',pipeline().parameters.p_auto_trgt_active_column_name,';-p_auto_trgt_valid_from_column_name-',pipeline().parameters.p_auto_trgt_valid_from_column_name,';-p_auto_trgt_valid_to_column_name-',pipeline().parameters.p_auto_trgt_valid_to_column_name,';-p_auto_log_process_id-',pipeline().parameters.p_auto_log_process_id,';-p_auto_trgt_schema_name-',pipeline().parameters.p_auto_trgt_schema_name,';-p_auto_trgt_table_name-',pipeline().parameters.p_auto_trgt_table_name,';-p_auto_std_sql_query-',pipeline().parameters.p_auto_std_sql_query,';-p_auto_trgt_hist_schema_name-',pipeline().parameters.p_auto_trgt_hist_schema_name,';-p_auto_trgt_hist_table_name-',pipeline().parameters.p_auto_trgt_hist_table_name,';-p_auto_stg_schema_name-',pipeline().parameters.p_auto_stg_schema_name,';-p_auto_skid_assignment_ind-',pipeline().parameters.p_auto_skid_assignment_ind,';-p_auto_process_date_column_name-',pipeline().parameters.p_auto_process_date_column_name,';-p_auto_process_id_column_name-',pipeline().parameters.p_auto_process_id_column_name,';-p_auto_annotation_1_string-',pipeline().parameters.p_auto_annotation_1_string,';-p_auto_annotation_2_string-',pipeline().parameters.p_auto_annotation_2_string,';-p_auto_annotation_3_string-',pipeline().parameters.p_auto_annotation_3_string,';-p_auto_annotation_4_string-',pipeline().parameters.p_auto_annotation_4_string,';-p_auto_annotation_5_string-',pipeline().parameters.p_auto_annotation_5_string)\n",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"in_pipeline_run_id": {
+							"value": {
+								"value": "@pipeline().RunId",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"in_status_code": {
+							"value": "START",
+							"type": "String"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "LS_AzureSQL_metadataDB",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "Get_source_objects_skids_Success",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "Get_source_objects_skids",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[meta].[p_fill_process_log]",
+					"storedProcedureParameters": {
+						"in_activity_type": {
+							"value": {
+								"value": "Lookup activity",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"in_message": {
+							"value": {
+								"value": "@concat('Get_source_objects_skids: ', activity('Get_source_objects_skids').output.value)",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"in_pipeline_name": {
+							"value": {
+								"value": "@pipeline().Pipeline",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"in_pipeline_parameters": {
+							"value": "None",
+							"type": "String"
+						},
+						"in_pipeline_run_id": {
+							"value": {
+								"value": "@pipeline().RunId",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"in_status_code": {
+							"value": "INFO",
+							"type": "String"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "LS_AzureSQL_metadataDB",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "Get_source_objects_skids_Log_fail",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "Get_source_objects_skids",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[meta].[p_fill_process_log]",
+					"storedProcedureParameters": {
+						"in_activity_type": {
+							"value": {
+								"value": "Copy data",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"in_message": {
+							"value": {
+								"value": "@concat('Error: activity Get_source_objects_skids. Output:', activity('Get_source_objects_skids').Error.Message)\n\n",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"in_pipeline_name": {
+							"value": {
+								"value": "@pipeline().Pipeline",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"in_pipeline_parameters": {
+							"value": "None",
+							"type": "String"
+						},
+						"in_pipeline_run_id": {
+							"value": {
+								"value": "@pipeline().RunId",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"in_status_code": {
+							"value": "FINISHED WITH ERRORS",
+							"type": "String"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "LS_AzureSQL_metadataDB",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "Prepare_Drop_STG_Tables_SQL_Success",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "Update_Object_Last_Refresh_Date",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[meta].[p_fill_process_log]",
+					"storedProcedureParameters": {
+						"in_activity_type": {
+							"value": {
+								"value": "Lookup activity (Stored procedure)",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"in_message": {
+							"value": {
+								"value": "@concat('Prepare_Drop_STG_Tables_SQL: ', activity('Prepare_Drop_STG_Tables_SQL').output.firstRow)",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"in_pipeline_name": {
+							"value": {
+								"value": "@pipeline().Pipeline",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"in_pipeline_parameters": {
+							"value": "None",
+							"type": "String"
+						},
+						"in_pipeline_run_id": {
+							"value": {
+								"value": "@pipeline().RunId",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"in_status_code": {
+							"value": "INFO",
+							"type": "String"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "LS_AzureSQL_metadataDB",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "Prepare_Drop_STG_Tables_SQL_Log_fail",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "Prepare_Drop_STG_Tables_SQL",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[meta].[p_fill_process_log]",
+					"storedProcedureParameters": {
+						"in_activity_type": {
+							"value": {
+								"value": "Lookup activity (Stored procedure)",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"in_message": {
+							"value": {
+								"value": "@concat('Error: activity Prepare_Drop_STG_Tables_SQL. Output:', activity('Prepare_Drop_STG_Tables_SQL').Error.Message)\n\n",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"in_pipeline_name": {
+							"value": {
+								"value": "@pipeline().Pipeline",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"in_pipeline_parameters": {
+							"value": "None",
+							"type": "String"
+						},
+						"in_pipeline_run_id": {
+							"value": {
+								"value": "@pipeline().RunId",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"in_status_code": {
+							"value": "FINISHED WITH ERRORS",
+							"type": "String"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "LS_AzureSQL_metadataDB",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "Drop_STG_Tables_Success",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "Drop_STG_Tables",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[meta].[p_fill_process_log]",
+					"storedProcedureParameters": {
+						"in_activity_type": {
+							"value": {
+								"value": "Lookup activity (script)",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"in_message": {
+							"value": {
+								"value": "@concat('Prepare_Drop_STG_Tables_SQL: ', activity('Drop_STG_Tables').output.firstRow)",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"in_pipeline_name": {
+							"value": {
+								"value": "@pipeline().Pipeline",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"in_pipeline_parameters": {
+							"value": "None",
+							"type": "String"
+						},
+						"in_pipeline_run_id": {
+							"value": {
+								"value": "@pipeline().RunId",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"in_status_code": {
+							"value": "INFO",
+							"type": "String"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "LS_AzureSQL_metadataDB",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "Drop_STG_Tables_Log_fail",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "Drop_STG_Tables",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[meta].[p_fill_process_log]",
+					"storedProcedureParameters": {
+						"in_activity_type": {
+							"value": {
+								"value": "Lookup activity (script)",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"in_message": {
+							"value": {
+								"value": "@concat('Error: activity Drop_STG_Tables. Output:', activity('Drop_STG_Tables').Error.Message)\n\n",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"in_pipeline_name": {
+							"value": {
+								"value": "@pipeline().Pipeline",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"in_pipeline_parameters": {
+							"value": "None",
+							"type": "String"
+						},
+						"in_pipeline_run_id": {
+							"value": {
+								"value": "@pipeline().RunId",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"in_status_code": {
+							"value": "FINISHED WITH ERRORS",
+							"type": "String"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "LS_AzureSQL_metadataDB",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "Prepare_Drop_STG_Tables_SQL_On_Fail",
+				"description": "Activity responsible for preparing drop script for staging objects used for standardization of given target object.",
+				"type": "Lookup",
+				"dependsOn": [
+					{
+						"activity": "Choose_Standardization_option",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": {
+							"value": "SELECT CONCAT ( \t\tSTRING_AGG(CAST(dsql AS NVARCHAR(MAX)), '') \t\t,'SELECT 0' \t\t) AS dsql FROM ( \tSELECT DISTINCT CONCAT ( \t\t\t'DROP TABLE ' \t\t\t,'@{pipeline().parameters.p_auto_stg_schema_name}' \t\t\t,'.' \t\t\t,object_name \t\t\t,'_' \t\t\t,'@{pipeline().parameters.p_auto_log_process_id}' \t\t\t,';' \t\t\t) AS dsql \tFROM ( \t\tSELECT ol.object_skid \t\t\t,ol.object_name \t\t\t,JSON_VALUE(pipeline_runtime_param_json, '$.p_trgt_container_name') AS container_name \t\t\t,JSON_VALUE(pipeline_runtime_param_json, '$.p_trgt_folder_name') AS folder_name \t\tFROM meta.source_to_target_mapping_cfg_vw sttm \t\tINNER JOIN meta.object_column_lkp ocl ON ocl.object_column_skid = sttm.source_object_column_skid \t\tINNER JOIN meta.object_lkp ol ON ol.object_skid = ocl.object_skid \t\tINNER JOIN meta.pipeline_instance_runtime_cfg run ON run.object_skid = ol.object_skid \t\tWHERE target_object_skid = @{pipeline().parameters.p_auto_trgt_object_skid} \t\t\tAND ol.target_object_ind = 'N' \t\t \t\tUNION \t\t \t\tSELECT DISTINCT cast(sk.value AS BIGINT) \t\t\t,ol.object_name \t\t\t,JSON_VALUE(pipeline_runtime_param_json, '$.p_trgt_container_name') AS container_name \t\t\t,JSON_VALUE(pipeline_runtime_param_json, '$.p_trgt_folder_name') AS folder_name \t\tFROM meta.object_from_join_cfg fj \t\tCROSS APPLY string_split(fj.source_object_skids_txt, ',') sk \t\tINNER JOIN meta.object_lkp ol ON ol.object_skid = sk.value \t\tINNER JOIN meta.pipeline_instance_runtime_cfg run ON run.object_skid = ol.object_skid \t\tWHERE fj.target_object_skid = @{pipeline().parameters.p_auto_trgt_object_skid} \t\t\tAND ol.target_object_ind = 'N' \t\t) AS x \t) AS drops",
+							"type": "Expression"
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "ds_metadata_db",
+						"type": "DatasetReference"
+					}
+				}
+			},
+			{
+				"name": "Update_Object_Last_Refresh_Date",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "Prepare_Drop_STG_Tables_SQL",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[meta].[p_update_object_refresh_date]",
+					"storedProcedureParameters": {
+						"in_object_skid": {
+							"value": {
+								"value": "@pipeline().parameters.p_auto_trgt_object_skid",
+								"type": "Expression"
+							},
+							"type": "Int32"
+						},
+						"in_object_type_code": {
+							"value": {
+								"value": "OB",
+								"type": "Expression"
+							},
+							"type": "String"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "LS_AzureSQL_metadataDB",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "Drop_STG_Tables_On_Fail",
+				"description": "Activity responsible for dropping\nstaging objects used for standardization of given target object.",
+				"type": "Lookup",
+				"dependsOn": [
+					{
+						"activity": "Prepare_Drop_STG_Tables_SQL_On_Fail",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": {
+							"value": "@activity('Prepare_Drop_STG_Tables_SQL_On_Fail').output.firstRow.dsql",
+							"type": "Expression"
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "ds_sqlserver_idm",
+						"type": "DatasetReference"
+					}
+				}
+			}
+		],
+		"parameters": {
+			"p_auto_trgt_object_skid": {
+				"type": "string"
+			},
+			"p_auto_trgt_key_column_list": {
+				"type": "string"
+			},
+			"p_auto_trgt_non_key_column_list": {
+				"type": "string"
+			},
+			"p_auto_trgt_skid_column_name": {
+				"type": "string"
+			},
+			"p_auto_trgt_truncate_ind": {
+				"type": "string"
+			},
+			"p_auto_trgt_scd_ind": {
+				"type": "string"
+			},
+			"p_auto_trgt_active_column_name": {
+				"type": "string"
+			},
+			"p_auto_trgt_valid_from_column_name": {
+				"type": "string"
+			},
+			"p_auto_trgt_valid_to_column_name": {
+				"type": "string"
+			},
+			"p_auto_log_process_id": {
+				"type": "string"
+			},
+			"p_auto_trgt_schema_name": {
+				"type": "string"
+			},
+			"p_auto_trgt_table_name": {
+				"type": "string"
+			},
+			"p_auto_std_sql_query": {
+				"type": "string"
+			},
+			"p_auto_trgt_hist_schema_name": {
+				"type": "string"
+			},
+			"p_auto_trgt_hist_table_name": {
+				"type": "string"
+			},
+			"p_auto_stg_schema_name": {
+				"type": "string"
+			},
+			"p_auto_skid_assignment_ind": {
+				"type": "string"
+			},
+			"p_auto_process_date_column_name": {
+				"type": "string"
+			},
+			"p_auto_process_id_column_name": {
+				"type": "string"
+			},
+			"p_auto_annotation_1_string": {
+				"type": "string"
+			},
+			"p_auto_annotation_2_string": {
+				"type": "string"
+			},
+			"p_auto_annotation_3_string": {
+				"type": "string"
+			},
+			"p_auto_annotation_4_string": {
+				"type": "string"
+			},
+			"p_auto_annotation_5_string": {
+				"type": "string"
+			}
+		},
+		"variables": {
+			"v_standardization_option": {
+				"type": "String"
+			}
+		},
+		"folder": {
+			"name": "Pipelines/"
+		},
+		"annotations": [],
+		"lastPublishTime": "2021-04-23T11:19:38Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

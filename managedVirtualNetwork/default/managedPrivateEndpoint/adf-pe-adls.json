@@ -1,0 +1,10 @@
+{
+	"name": "adf-pe-adls",
+	"properties": {
+		"privateLinkResourceId": "/subscriptions/52e7535e-dee2-4fb2-aa84-02da390e998f/resourceGroups/rg-dataplatform-uat-weu-02/providers/Microsoft.Storage/storageAccounts/dlsdpingestionuatweu",
+		"groupId": "dfs",
+		"fqdns": [
+			"dlsdpingestionuatweu.dfs.core.windows.net"
+		]
+	}
+}

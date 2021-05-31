@@ -1,0 +1,5 @@
+.idea
+~*.*
+# ignore properties files apart from a default liquibase.properties
+*.properties
+!liquibase.properties

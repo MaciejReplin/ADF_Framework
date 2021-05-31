@@ -1,0 +1,51 @@
+{
+  "BeeSafeKeyVault": [
+    {
+      "name": "$.properties.typeProperties.baseUrl",
+      "value": "https://kv-dp-idm-prod-weu.vault.azure.net/",
+      "action": "update"
+    }
+  ],
+  "LS_AzureDataLakeStoragev2": [
+    {
+      "name": "$.properties.typeProperties.url",
+      "value": "https://dlsdpingestionprodweu.dfs.core.windows.net/",
+      "action": "update"
+    }
+  ],
+  "adf-dp-idm-dev-weu": [
+    {
+      "name": "$.properties.globalParameters.adf_resource_group_name.value",
+      "value": "rg-dataplatform-idm-prod-weu"
+    },
+    {
+      "name": "$.properties.globalParameters.adf_environment.value",
+      "value": "PROD"
+    },
+    {
+      "name": "$.properties.globalParameters.adf_subscription_id.value",
+      "value": "2afbf22f-d74e-4094-b158-ebd85d41241d"
+    }
+  ],
+  "integrationRuntimeManagedVN": [
+    {
+      "name": "$.properties.typeProperties.computeProperties.dataFlowProperties.coreCount",
+      "value": 16,
+      "action": "update"
+    }
+  ],
+  "Run_In_Parallel": [
+    {
+      "name": "$.properties.activities.typeProperties.batchCount",
+      "value": 10,
+      "action": "update"
+    }
+  ],
+"TRG_refresh_IDM_daily": [
+  {
+    "name": "$.properties.runtimeState",
+    "value": "Started",
+    "action": "update"
+  }
+]
+}
